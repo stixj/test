@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Direct — Prioritizace automatizace likvidace</title>
+<style>
+:root{--dk:#1B5E3B;--gr:#2E8B57;--bg:#6BBF4E;--lg:#A8D88B;--pg:#E8F5E0;--wh:#fff;--dt:#2C3E50;--gy:#7F8C8D;--lgr:#F4F6F5;--bd:#D5E8D4;--or:#E67E22;--rd:#C0392B;--bl:#2980B9;--pu:#8E44AD}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--lgr);color:var(--dt)}
+.hd{background:linear-gradient(135deg,var(--dk),var(--gr));padding:24px 28px 18px;color:#fff}
+.hd-sub{font-size:11px;text-transform:uppercase;letter-spacing:2px;opacity:.8;margin-bottom:4px}
+.hd-t{font-size:22px;font-weight:800;margin-bottom:2px}
+.hd-d{font-size:13px;opacity:.85}
+.tabs{display:flex;gap:0;padding:0 20px;border-bottom:2px solid var(--bd);overflow-x:auto;background:var(--wh)}
+.tab{padding:11px 16px;font-size:13px;font-weight:500;color:var(--gy);background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;font-family:inherit}
+.tab.a{font-weight:700;color:var(--dk);border-bottom-color:var(--dk)}
+.ct{padding:20px;max-width:1020px;margin:0 auto}
+.tp{display:none}.tp.a{display:block}
+.c{background:var(--wh);border-radius:12px;border:1px solid var(--bd);padding:20px 24px;margin-bottom:16px}
+.c-t{font-size:16px;font-weight:700;color:var(--dk);margin-bottom:2px}
+.c-s{font-size:12px;color:var(--gy);margin-bottom:14px}
+.note{font-size:12px;color:var(--gy);line-height:1.7;margin-top:12px;padding:12px 14px;background:var(--pg);border-radius:8px;border-left:3px solid var(--dk)}
+.note.warn{background:#fef3e0;border-left-color:var(--or)}
+.note.top{background:#e8f5e0;border-left-color:var(--dk);font-size:13px}
+.kpi-row{display:flex;gap:10px;padding:12px 20px;overflow-x:auto;flex-wrap:wrap}
+.kpi{border-radius:10px;padding:12px 14px;flex:1;min-width:130px;border-left:4px solid var(--dk);background:var(--pg)}
+.kpi .l{font-size:10px;color:var(--gy);margin-bottom:3px}
+.kpi .v{font-size:20px;font-weight:800;color:var(--dk)}
+.kpi .u{font-size:10px;color:var(--gy)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 5px;text-align:right;font-weight:700;color:var(--dk);white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:6px 5px;text-align:right;border-bottom:1px solid #eee}
+td:first-child{text-align:left;font-weight:600}
+tfoot td{font-weight:800;color:var(--dk);border-top:2px solid var(--dk)}
+.tg{font-size:11px;font-weight:700;padding:2px 6px;border-radius:10px;display:inline-block}
+.tg.t1{background:#1B5E3B;color:#fff}
+.tg.t2{background:#6BBF4E;color:#fff}
+.tg.t3{background:#E67E22;color:#fff}
+.tg.t4{background:#BDC3C7;color:#333}
+.seg-bar{display:flex;height:26px;border-radius:5px;overflow:hidden;margin-bottom:2px}
+.seg-bar div{display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.leg-i{display:flex;align-items:center;gap:4px;font-size:11px}
+.leg-d{width:11px;height:11px;border-radius:2px}
+.bar-row{margin-bottom:8px}
+.bar-h{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
+.bar-n{font-weight:600}.bar-v{font-weight:700}
+.bar-t{background:#eee;border-radius:5px;height:24px;overflow:hidden}
+.bar-f{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:7px}
+.bar-p{font-size:10px;color:#fff;font-weight:700}
+.pri-card{border-radius:12px;padding:16px 20px;margin-bottom:12px;border:2px solid var(--bd);position:relative}
+.pri-card .rank{position:absolute;top:-10px;left:16px;font-size:14px;font-weight:800;padding:2px 12px;border-radius:12px;color:#fff}
+.ht{width:100%;border-collapse:collapse;font-size:11px}
+.ht th{padding:6px 3px;text-align:center;font-weight:700;color:var(--dk);font-size:10px}
+.ht th:first-child{text-align:left;min-width:70px}
+.ht td{padding:5px 3px;text-align:center;border:1px solid #f0f0f0;font-weight:600;font-size:11px}
+.footer{padding:16px;text-align:center;font-size:11px;color:var(--gy)}
+@media(max-width:640px){.kpi-row{flex-wrap:wrap}.kpi{min-width:calc(50% - 8px)}}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="hd-sub">Direct pojišťovna</div>
+  <div class="hd-t">Prioritizace automatizace likvidace PU</div>
+  <div class="hd-d">Které segmenty a rangy automatizovat nejdříve? · Data 2025 · 45 min/případ</div>
+</div>
+<div class="kpi-row" id="kpis"></div>
+<div class="tabs" id="tabs"></div>
+<div class="ct">
+  <div id="t-doporuceni" class="tp a"></div>
+  <div id="t-metody" class="tp"></div>
+  <div id="t-matice" class="tp"></div>
+  <div id="t-roadmap" class="tp"></div>
+</div>
+<div class="footer">Direct pojišťovna · Prioritizace automatizace · Data 2025 · 45 min/případ</div>
+
+<script>
+const P=['Cestovko','Havarijní','Majetek','Odpovědnost','Mazlíčci','Povinné ručení','Skla','Zahraniční','Zdraví'];
+const PF=['Cestovko','Havarijní','Majetek','Odpovědnost','Mazlíčci','Povinné ručení','Skla','Zahraniční škody','Zdraví'];
+const PC=['#2980B9','#E67E22','#C0392B','#D4A017','#8E44AD','#1B5E3B','#6BBF4E','#E74C3C','#3498DB'];
+const RS=['0 Kč','1–25k','25–50k','50–75k','75–100k','100k–1M'];
+const RC=['#BDC3C7','#6BBF4E','#2E8B57','#E67E22','#C0392B','#8E44AD'];
+
+// Range data 2025 per product (now split Maj/Odp)
+const RD={
+'Cestovko':[130,1394,203,74,22,51],
+'Havarijní':[780,2539,1778,1047,729,1142],
+'Majetek':[1389,4963,892,285,180,290],
+'Odpovědnost':[495,1785,162,29,15,29],
+'Mazlíčci':[438,645,20,2,0,1],
+'Povinné ručení':[1129,7007,4399,1813,1082,1998],
+'Skla':[574,8278,672,49,11,9],
+'Zahraniční':[67,259,238,298,252,485],
+'Zdraví':[48,368,74,300,21,190]
+};
+
+// Method data 2025 (Sešit2) - Majetek a Odpovědnost combined in source
+// We need to split: using proportional allocation from range data
+// Maj+Odp combined: Faktura 3583, Rozpočet 3612, Ostatní 3319, Zamítnuté ~1884
+// Maj total (excl zamítnuté): 4963+892+285+180+290 = 6610
+// Odp total (excl zamítnuté): 1785+162+29+15+29 = 2020
+// Ratio: Maj 76.6%, Odp 23.4%
+
+const MD={
+'Cestovko':{fak:1090,roz:269,ost:515},
+'Havarijní':{fak:5627,roz:1609,ost:779},
+'Majetek':{fak:Math.round(3583*0.766),roz:Math.round(3612*0.766),ost:Math.round(3319*0.766)},
+'Odpovědnost':{fak:Math.round(3583*0.234),roz:Math.round(3612*0.234),ost:Math.round(3319*0.234)},
+'Mazlíčci':{fak:1002,roz:3,ost:101},
+'Povinné ručení':{fak:9080,roz:4863,ost:3485},
+'Skla':{fak:9151,roz:10,ost:432},
+'Zahraniční':{fak:10,roz:7,ost:1582},
+'Zdraví':{fak:0,roz:0,ost:1000}
+};
+
+// Zamítnuté (rang 0) per product
+const ZAM={
+'Cestovko':130,'Havarijní':780,'Majetek':1389,'Odpovědnost':495,
+'Mazlíčci':438,'Povinné ručení':1129,'Skla':574,'Zahraniční':67,'Zdraví':48
+};
+
+// Already automated: Skla rang 1-25k, 50% already fully automated
+// 8278 * 50% = 4139 already running, 4139 remaining
+const ALREADY_AUTO={'Skla':{1:4139}}; // product -> {rangeIndex: count}
+const ALREADY_TOTAL=4139;
+
+const MPM=45; // minutes per case
+function fmt(n){return Math.round(n).toLocaleString('cs-CZ')}
+function hrs(n){return Math.round(n*MPM/60)}
+
+// Compute totals
+const totals={};
+let grandFak=0,grandRoz=0,grandOst=0,grandZam=0,grandAll=0;
+P.forEach(p=>{
+  const t=RD[p].reduce((s,v)=>s+v,0);
+  const nonZam=t-ZAM[p];
+  totals[p]={total:t,zamitnuté:ZAM[p],faktura:MD[p].fak,rozpocet:MD[p].roz,ostatni:MD[p].ost,
+    nonZam,fakRatio:MD[p].fak/(MD[p].fak+MD[p].roz||1),
+    fakHours:hrs(MD[p].fak),rozHours:hrs(MD[p].roz),totalAutoHours:hrs(MD[p].fak+MD[p].roz)};
+  grandFak+=MD[p].fak;grandRoz+=MD[p].roz;grandOst+=MD[p].ost;grandZam+=ZAM[p];grandAll+=t;
+});
+
+// Remaining new automation potential (subtract already automated)
+const newFak=grandFak-ALREADY_TOTAL; // already auto are all faktura at Skla
+
+function rKPI(){
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="l">Celkem plnění 2025</div><div class="v">${fmt(grandAll)}</div><div class="u">bez zamítnutých: ${fmt(grandAll-grandZam)}</div></div>
+    <div class="kpi" style="border-left-color:var(--bg)"><div class="l">Nová automatizace (faktura)</div><div class="v" style="color:var(--bg)">${fmt(newFak)}</div><div class="u">= ${fmt(hrs(newFak))} h/rok (po odečtení skel)</div></div>
+    <div class="kpi" style="border-left-color:var(--or);background:#fef3e0"><div class="l">Rozpočet (složité AI)</div><div class="v" style="color:var(--or)">${fmt(grandRoz)}</div><div class="u">= ${fmt(hrs(grandRoz))} h/rok</div></div>
+    <div class="kpi" style="border-left-color:#17a2b8;background:#e0f4f5"><div class="l">Již automatizováno</div><div class="v" style="color:#17a2b8">${fmt(ALREADY_TOTAL)}</div><div class="u">Skla 1–25k (50 %)</div></div>`;
+}
+
+let at='doporuceni';
+const tabDef=[{id:'doporuceni',l:'Doporučení'},{id:'metody',l:'Metody likvidace'},{id:'matice',l:'Produkt × Rang'},{id:'roadmap',l:'Fázová roadmapa'}];
+function rTabs(){document.getElementById('tabs').innerHTML=tabDef.map(t=>`<button class="tab ${t.id===at?'a':''}" onclick="sw('${t.id}')">${t.l}</button>`).join('')}
+function sw(id){at=id;rTabs();document.querySelectorAll('.tp').forEach(e=>e.classList.remove('a'));document.getElementById('t-'+id).classList.add('a');render()}
+function render(){({doporuceni:rDop,metody:rMet,matice:rMat,roadmap:rRoad})[at]()}
+
+// ====== DOPORUČENÍ ======
+function rDop(){
+  // Build priority list
+  // Tier 1: Faktura + rang do 25k = easiest, highest volume
+  // Tier 2: Faktura + rang 25-50k
+  // Tier 3: Faktura + vyšší rangy
+  // Then: Rozpočet same pattern
+  
+  // Approximate: distribute faktura/rozpočet proportionally across ranges
+  // (We don't have exact cross-tab, so we use product-level method ratios applied to ranges)
+  
+  const tiers=[];
+  
+  // For each product, estimate faktura vs rozpočet in each range
+  // Using overall product ratio as proxy
+  P.forEach((p,pi)=>{
+    if(p==='Zahraniční'||p==='Zdraví')return; // too small or no faktura
+    const m=MD[p];
+    const autoTotal=m.fak+m.roz;
+    if(autoTotal===0)return;
+    const fakPct=m.fak/autoTotal;
+    
+    // For each non-zero range
+    RD[p].forEach((vol,ri)=>{
+      if(ri===0)return; // skip zamítnuté
+      if(vol===0)return;
+      
+      // Estimate how many in this range are faktura vs rozpočet
+      // Deduct zamítnuté and ostatní proportionally, then split remainder
+      const nonAutoInRange=vol*(m.ost/(autoTotal+m.ost));
+      const autoInRange=vol-nonAutoInRange;
+      let fakInRange=Math.round(autoInRange*fakPct);
+      const rozInRange=Math.round(autoInRange*(1-fakPct));
+      
+      // Subtract already automated (Skla 1-25k: 50% = 4139)
+      let alreadyAuto=0;
+      if(ALREADY_AUTO[p]&&ALREADY_AUTO[p][ri]){
+        alreadyAuto=ALREADY_AUTO[p][ri];
+        fakInRange=Math.max(0,fakInRange-alreadyAuto);
+      }
+      
+      if(fakInRange>0){
+        tiers.push({product:p,productFull:PF[pi],range:RS[ri],rangeFull:RS[ri]+' Kč',
+          method:'Faktura',count:fakInRange,hours:hrs(fakInRange),
+          color:PC[pi],difficulty:1+(ri-1)*0.3, // lower range = easier
+          score:fakInRange*10/(1+(ri-1)*0.5) // volume weighted by simplicity
+        });
+      }
+      if(rozInRange>10){
+        tiers.push({product:p,productFull:PF[pi],range:RS[ri],rangeFull:RS[ri]+' Kč',
+          method:'Rozpočet',count:rozInRange,hours:hrs(rozInRange),
+          color:PC[pi],difficulty:3+(ri-1)*0.3,
+          score:rozInRange*5/(3+(ri-1)*0.5)
+        });
+      }
+    });
+  });
+  
+  tiers.sort((a,b)=>b.score-a.score);
+  
+  // Assign tiers
+  let cumHours=0;
+  const totalAutoHours=hrs(grandFak+grandRoz);
+  tiers.forEach((t,i)=>{
+    cumHours+=t.hours;
+    t.cumHours=cumHours;
+    t.cumPct=(cumHours/totalAutoHours*100).toFixed(1);
+    if(t.method==='Faktura'&&(t.range==='1–25k'||t.range==='25–50k'))t.tier=1;
+    else if(t.method==='Faktura')t.tier=2;
+    else if(t.method==='Rozpočet'&&(t.range==='1–25k'||t.range==='25–50k'))t.tier=3;
+    else t.tier=4;
+  });
+
+  // Top 10 priorities
+  const top=tiers.slice(0,12);
+  let topRows=top.map((t,i)=>{
+    const tierBg=['','#1B5E3B','#6BBF4E','#E67E22','#BDC3C7'][t.tier];
+    const tierLbl=['','Tier 1','Tier 2','Tier 3','Tier 4'][t.tier];
+    return`<tr>
+      <td style="text-align:center;font-weight:800;color:var(--dk)">${i+1}</td>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${t.color};margin-right:4px"></span>${t.productFull}</td>
+      <td>${t.range}</td>
+      <td><span style="font-weight:700;color:${t.method==='Faktura'?'var(--bg)':'var(--or)'}">${t.method}</span></td>
+      <td style="font-weight:700">${fmt(t.count)}</td>
+      <td style="font-weight:700;color:var(--dk)">${fmt(t.hours)}</td>
+      <td>${t.cumPct}%</td>
+      <td><span class="tg t${t.tier}">${tierLbl}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Summary by tier
+  const tierSums=[1,2,3,4].map(tier=>{
+    const items=tiers.filter(t=>t.tier===tier);
+    const count=items.reduce((s,t)=>s+t.count,0);
+    const hours=items.reduce((s,t)=>s+t.hours,0);
+    return{tier,count,hours,items:items.length};
+  });
+
+  let tierCards=tierSums.filter(t=>t.count>0).map(t=>{
+    const colors=['','#1B5E3B','#6BBF4E','#E67E22','#BDC3C7'][t.tier];
+    const names=['','Faktura + malé rangy (do 50k)','Faktura + vyšší rangy (50k+)','Rozpočet + malé rangy (do 50k)','Rozpočet + vyšší rangy'][t.tier];
+    const desc=['','Technicky nejsnazší, nejvyšší objem. OCR faktur + kontrola oproti ceníkům.','Stejná technologie jako Tier 1, ale vyšší částky = vyšší riziko, potřeba přísnějších pravidel.','AI musí sestavit rozpočet z fotek/popisu. Složitější, ale velký objem u POV a Majetku.','Komplexní případy. Rozpočet + vysoké částky = individuální posouzení.'][t.tier];
+    return`<div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--bd)">
+      <div style="width:50px;height:50px;border-radius:50%;background:${colors};color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0">T${t.tier}</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700">${names}</div><div style="font-size:11px;color:var(--gy)">${desc}</div></div>
+      <div style="text-align:right;flex-shrink:0"><div style="font-size:18px;font-weight:800;color:${colors}">${fmt(t.hours)} h</div><div style="font-size:11px;color:var(--gy)">${fmt(t.count)} případů</div></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('t-doporuceni').innerHTML=`
+    <div class="c"><div class="c-t">Jednoznačné doporučení</div>
+    <div class="note top" style="font-size:14px;line-height:1.8">
+      <strong>1. Začněte FAKTURAMI v rangu 1–25 000 Kč</strong> u produktů POV, Havarijní a zbytku Skel — u Skel 1–25k už 50 % běží automaticky (4 139 případů), takže prioritou č. 1 je nyní <strong>POV × 1–25k</strong>.<br><br>
+      <strong>2. Rozšiřte faktury na rang 25–50k</strong> u POV, Havarijní a Skla — další tisíce hodin se stejnou technologií.<br><br>
+      <strong>3. Doautomatizujte zbývajících 50 % Skel 1–25k</strong> (nestandardní skla, krátké smlouvy, vysoké částky) — rozšíření stávajícího řešení.<br><br>
+      <strong>4. Rozpočty přijdou až poté</strong> — technicky výrazně složitější (AI analýza fotek, sestavení rozpočtu), ale u POV a Majetku jde o velké objemy.<br><br>
+      <strong>Neautomatizujte:</strong> zamítnuté (0 Kč), kategorii „ostatní", Zahraniční škody a Zdraví (mizivé objemy nebo specifické procesy).
+    </div></div>
+
+    <div class="c"><div class="c-t">Čtyři úrovně priority</div><div class="c-s">Seřazeno podle kombinace: objem × jednoduchost implementace</div>
+    ${tierCards}</div>
+
+    <div class="c"><div class="c-t">Top 12 konkrétních segmentů k automatizaci</div><div class="c-s">Seřazeno dle priority skóre (objem × jednoduchost). Kumulativní % = kolik z celkové úspory pokryjete.</div>
+    <div style="overflow-x:auto"><table>
+    <thead><tr><th style="text-align:center">#</th><th style="text-align:left">Produkt</th><th>Rang</th><th>Metoda</th><th>Případů/rok</th><th>Hodin/rok</th><th>Kum. %</th><th>Tier</th></tr></thead>
+    <tbody>${topRows}</tbody></table></div>
+    <div class="note">Prvních 5 segmentů pokrývá víc než polovinu celkové úspory. Všech 5 je typu <strong>Faktura</strong> — jedna AI technologie, škálovatelná napříč produkty. Pozn.: Skla×1–25k je zredukováno o 50 % již automatizovaných.</div></div>
+
+    <div class="c"><div class="c-t">Proč faktura × malé rangy první?</div>
+    <div class="note warn">
+      <strong>Tři důvody:</strong><br><br>
+      <strong>1. Technická jednoduchost:</strong> Faktura = klient dodá dokument → OCR/extrakce dat → kontrola oproti ceníkům → automatické schválení. Rozpočet = AI musí „rozumět" poškození z fotek a sestavit odhad — úplně jiná technologická úroveň.<br><br>
+      <strong>2. Rizikový profil:</strong> Malé částky (do 25–50k) = nízké riziko chybného rozhodnutí. Případná chyba AI u plnění 8 000 Kč má nesrovnatelně menší dopad než u plnění 500 000 Kč.<br><br>
+      <strong>3. Objem:</strong> 78 % všech plnění je v rangu 1–25k. Automatizací jednoho rangu pokryjete většinu portfolia.
+    </div></div>`;
+}
+
+// ====== METODY LIKVIDACE ======
+function rMet(){
+  let methBars=P.map((p,pi)=>{
+    const m=MD[p],z=ZAM[p],t=RD[p].reduce((s,v)=>s+v,0);
+    if(t===0)return'';
+    const segs=[
+      {v:m.fak,c:'var(--bg)',l:'Faktura'},
+      {v:m.roz,c:'var(--or)',l:'Rozpočet'},
+      {v:m.ost,c:'#95A5A6',l:'Ostatní'},
+      {v:z,c:'var(--rd)',l:'Zamítnuté'}
+    ];
+    let bar=segs.map(s=>{const w=(s.v/t*100);return w>0?`<div style="width:${w}%;background:${s.c}" title="${s.l}: ${fmt(s.v)} (${w.toFixed(1)}%)">${w>5?`${w.toFixed(0)}%`:''}</div>`:''}).join('');
+    return`<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;margin-bottom:2px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${PC[pi]};margin-right:5px"></span>${PF[pi]} <span style="color:var(--gy);font-weight:400">(${fmt(t)})</span></div><div class="seg-bar">${bar}</div></div>`;
+  }).join('');
+
+  let legend=['Faktura|var(--bg)','Rozpočet|var(--or)','Ostatní|#95A5A6','Zamítnuté|var(--rd)'].map(x=>{const[l,c]=x.split('|');return`<div class="leg-i"><div class="leg-d" style="background:${c}"></div>${l}</div>`}).join('');
+
+  let tblRows=P.map((p,pi)=>{
+    const m=MD[p],z=ZAM[p],t=RD[p].reduce((s,v)=>s+v,0);
+    if(t===0)return'';
+    const autoT=m.fak+m.roz;
+    const fakR=autoT>0?(m.fak/autoT*100).toFixed(0):'—';
+    return`<tr>
+      <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${PC[pi]};margin-right:4px"></span>${PF[pi]}</td>
+      <td style="color:var(--bg);font-weight:700">${fmt(m.fak)}</td>
+      <td>${fmt(hrs(m.fak))}</td>
+      <td style="color:var(--or);font-weight:700">${fmt(m.roz)}</td>
+      <td>${fmt(hrs(m.roz))}</td>
+      <td>${fmt(m.ost)}</td>
+      <td>${fmt(z)}</td>
+      <td style="font-weight:700">${fakR}%</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('t-metody').innerHTML=`
+    <div class="c"><div class="c-t">Způsob likvidace podle produktu (2025)</div><div class="c-s">Faktura = snadná automatizace, Rozpočet = složitá, Ostatní + Zamítnuté = neautomatizujeme</div>
+    ${methBars}<div class="legend">${legend}</div>
+    <div class="note"><strong>Klíčové:</strong> Skla (95 % faktura) a Mazlíčci (91 % faktura) jsou téměř výhradně fakturové. U Skel 1–25k ale již <strong>50 % běží automaticky</strong> (4 139 případů). POV má 65 % faktur, Havarijní 78 %. Majetek je rovnoměrně rozdělen (50/50).</div></div>
+
+    <div class="c"><div class="c-t">Detailní přehled — hodinová úspora</div>
+    <div style="overflow-x:auto"><table>
+    <thead><tr><th style="text-align:left">Produkt</th><th style="color:var(--bg)">Faktura</th><th>h/rok</th><th style="color:var(--or)">Rozpočet</th><th>h/rok</th><th>Ostatní</th><th>Zamítnuté</th><th>Fak. %</th></tr></thead>
+    <tbody>${tblRows}</tbody>
+    <tfoot><tr><td>CELKEM</td><td style="color:var(--bg);font-weight:700">${fmt(grandFak)}</td><td>${fmt(hrs(grandFak))}</td><td style="color:var(--or);font-weight:700">${fmt(grandRoz)}</td><td>${fmt(hrs(grandRoz))}</td><td>${fmt(grandOst)}</td><td>${fmt(grandZam)}</td><td></td></tr></tfoot>
+    </table></div>
+    <div class="note">Celková fakturová automatizace = <strong>${fmt(hrs(grandFak))} h/rok</strong>, ale po odečtení již automatizovaných Skel 1–25k (4 139 ks) je <strong>nový potenciál ${fmt(hrs(newFak))} h/rok (${(hrs(newFak)/1700).toFixed(1)} FTE)</strong>. Rozpočty přidají dalších <strong>${fmt(hrs(grandRoz))} h/rok (${(hrs(grandRoz)/1700).toFixed(1)} FTE)</strong>, ale s výrazně vyšší implementační náročností.</div></div>
+
+    <div class="c"><div class="c-t">Úspora hodin podle produktu a metody</div>
+    ${P.filter(p=>MD[p].fak+MD[p].roz>0).map((p,i)=>{
+      const pi=P.indexOf(p);
+      const fh=hrs(MD[p].fak),rh=hrs(MD[p].roz),th=fh+rh;
+      const maxH=Math.max(...P.map(pp=>hrs(MD[pp].fak)+hrs(MD[pp].roz)));
+      const fw=(fh/maxH*100),rw=(rh/maxH*100);
+      return`<div class="bar-row"><div class="bar-h"><span class="bar-n"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${PC[pi]};margin-right:4px"></span>${PF[pi]}</span><span class="bar-v">${fmt(th)} h</span></div>
+      <div class="bar-t"><div style="display:flex;height:100%">
+        <div style="width:${fw}%;background:var(--bg);border-radius:5px 0 0 5px;display:flex;align-items:center;padding-left:4px">${fw>8?`<span class="bar-p">F: ${fmt(fh)}</span>`:''}</div>
+        <div style="width:${rw}%;background:var(--or);border-radius:0 5px 5px 0;display:flex;align-items:center;padding-left:4px">${rw>8?`<span class="bar-p">R: ${fmt(rh)}</span>`:''}</div>
+      </div></div></div>`;
+    }).join('')}
+    <div class="legend"><div class="leg-i"><div class="leg-d" style="background:var(--bg)"></div>Faktura</div><div class="leg-i"><div class="leg-d" style="background:var(--or)"></div>Rozpočet</div></div></div>`;
+}
+
+// ====== MATICE PRODUKT × RANG ======
+function rMat(){
+  // Heatmap of automatable volume (excl zamítnuté, excl ostatní)
+  // Color = volume, annotated with estimated method split
+  const autoByPR={}; // product -> range -> {fak, roz, total}
+  let maxCell=0;
+  P.forEach(p=>{
+    autoByPR[p]=[];
+    const m=MD[p];
+    const autoT=m.fak+m.roz;
+    if(autoT===0){RS.forEach((_,ri)=>autoByPR[p].push({fak:0,roz:0,total:0}));return;}
+    const fakPct=m.fak/autoT;
+    RD[p].forEach((vol,ri)=>{
+      if(ri===0){autoByPR[p].push({fak:0,roz:0,total:0,already:0});return;}
+      const nonAutoR=vol*(m.ost/(autoT+m.ost));
+      const autoR=Math.max(0,vol-nonAutoR);
+      let f=Math.round(autoR*fakPct),r=Math.round(autoR*(1-fakPct));
+      let already=0;
+      if(ALREADY_AUTO[p]&&ALREADY_AUTO[p][ri]){already=ALREADY_AUTO[p][ri];f=Math.max(0,f-already);}
+      autoByPR[p].push({fak:f,roz:r,total:f+r,already});
+      if(f+r>maxCell)maxCell=f+r;
+    });
+  });
+
+  function hc(v){if(!v)return'#f9f9f9';const i=Math.min(v/maxCell,1);return`rgb(${Math.round(27+(1-i)*228)},${Math.round(94+(1-i)*161)},${Math.round(59+(1-i)*196)})`}
+  function tc(v){return v/maxCell>.2?'#fff':'#333'}
+
+  let hRows=P.map((p,pi)=>{
+    const rowT=autoByPR[p].reduce((s,c)=>s+c.total,0);
+    if(rowT===0)return'';
+    let cells=autoByPR[p].map((c,ri)=>{
+      if(ri===0)return`<td style="background:#f5f5f5;color:#ccc;font-size:10px">zamítn.</td>`;
+      return`<td style="background:${hc(c.total)};color:${tc(c.total)}">${c.total>0?`${fmt(c.total)}<br><span style="font-size:9px;opacity:.8">F:${fmt(c.fak)}</span>${c.already?`<br><span style="font-size:8px;color:#17a2b8">✓${fmt(c.already)}</span>`:''}`:'-'}</td>`;
+    }).join('');
+    return`<tr><td style="text-align:left;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${PC[pi]};margin-right:3px"></span>${P[pi]}</td>${cells}<td style="font-weight:800;background:var(--pg)">${fmt(rowT)}</td></tr>`;
+  }).join('');
+
+  // Column totals
+  let colTots=RS.map((_,ri)=>{
+    const t=P.reduce((s,p)=>s+autoByPR[p][ri].total,0);
+    return ri===0?`<td style="background:#f5f5f5">—</td>`:`<td style="font-weight:800;background:var(--pg)">${fmt(t)}</td>`;
+  }).join('');
+
+  document.getElementById('t-matice').innerHTML=`
+    <div class="c"><div class="c-t">Matice automatizovatelných objemů (2025)</div>
+    <div class="c-s">Produkt × rang plnění. Hodnota = odhadovaný počet automatizovatelných případů (Faktura + Rozpočet). F: = z toho faktura. Bez zamítnutých a „ostatní".</div>
+    <div style="overflow-x:auto"><table class="ht"><thead><tr><th></th>${RS.map(r=>`<th>${r}</th>`).join('')}<th style="background:var(--pg)">Celkem</th></tr></thead>
+    <tbody>${hRows}</tbody>
+    <tfoot><tr><td style="text-align:left;font-weight:800">Celkem</td>${colTots}<td style="font-weight:800;background:var(--dk);color:#fff">${fmt(P.reduce((s,p)=>s+autoByPR[p].reduce((ss,c)=>ss+c.total,0),0))}</td></tr></tfoot></table></div>
+    <div class="note"><strong>Největší buňky</strong> = nejvyšší priorita. POV×1–25k a Majetek×1–25k jsou dva největší nově automatizovatelné bloky. U Skla×1–25k je 50 % již automatizováno (✓ = počet již běžících). Hodnoty v buňkách = <strong>zbývající</strong> potenciál.</div></div>
+
+    <div class="c"><div class="c-t">Hodinová úspora podle buňky (produkt × rang)</div><div class="c-s">Přepočet na hodiny (45 min/případ). Seřazeno od nejvyšší úspory.</div>
+    ${(()=>{
+      let cells=[];
+      P.forEach((p,pi)=>{autoByPR[p].forEach((c,ri)=>{
+        if(ri===0||c.total===0)return;
+        cells.push({product:PF[pi],range:RS[ri],fak:c.fak,roz:c.roz,total:c.total,hours:hrs(c.total),fakH:hrs(c.fak),color:PC[pi]});
+      })});
+      cells.sort((a,b)=>b.hours-a.hours);
+      const maxH=cells[0]?.hours||1;
+      return cells.slice(0,15).map(c=>{
+        const fw=(c.fakH/maxH*100),rw=((c.hours-c.fakH)/maxH*100);
+        return`<div class="bar-row"><div class="bar-h"><span class="bar-n"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c.color};margin-right:4px"></span>${c.product} × ${c.range}</span><span class="bar-v">${fmt(c.hours)} h <span style="font-weight:400;color:var(--gy)">(F:${fmt(c.fakH)})</span></span></div>
+        <div class="bar-t"><div style="display:flex;height:100%">
+          <div style="width:${fw}%;background:var(--bg);border-radius:5px 0 0 5px;display:flex;align-items:center;padding-left:4px">${fw>10?`<span class="bar-p">Faktura</span>`:''}</div>
+          <div style="width:${rw}%;background:var(--or);border-radius:0 5px 5px 0;display:flex;align-items:center;padding-left:4px">${rw>10?`<span class="bar-p">Rozpočet</span>`:''}</div>
+        </div></div></div>`;
+      }).join('');
+    })()}</div>`;
+}
+
+// ====== ROADMAPA ======
+function rRoad(){
+  const phases=[
+    {num:1,name:'Fáze 1 — Quick Win (0–3 měsíce)',color:'#1B5E3B',
+     desc:'Faktury v rangu 1–25k u produktů s vysokým podílem faktur',
+     items:[
+       {p:'POV',r:'1–25k',method:'Faktura',count:4571,note:'Největší segment, jasná pravidla, nejvyšší priorita'},
+       {p:'Havarijní',r:'1–25k',method:'Faktura',count:1967,note:'78 % faktur, standardní opravy'},
+       {p:'Skla',r:'1–25k',method:'Faktura',count:3743,note:'Zbývajících 50 % (4 139 už jede automaticky)'},
+       {p:'Mazlíčci',r:'1–25k',method:'Faktura',count:586,note:'Nový produkt, 100 % faktura, jednoduché'},
+     ]},
+    {num:2,name:'Fáze 2 — Rozšíření faktur (3–6 měsíců)',color:'#6BBF4E',
+     desc:'Faktury v rangu 25–50k + faktury Majetek a Odpovědnost',
+     items:[
+       {p:'POV',r:'25–50k',method:'Faktura',count:2870,note:'Stejná technologie, vyšší částky'},
+       {p:'Havarijní',r:'25–50k',method:'Faktura',count:1377,note:'Rozšíření z Fáze 1'},
+       {p:'Majetek',r:'1–25k',method:'Faktura',count:2446,note:'50 % faktur, zbytek rozpočet'},
+       {p:'Skla',r:'25–50k',method:'Faktura',count:640,note:'Nestandardní skla'},
+       {p:'Odpovědnost',r:'1–25k',method:'Faktura',count:879,note:'Dvojí hlášení, ale faktura jednoduchá'},
+     ]},
+    {num:3,name:'Fáze 3 — Rozpočty (6–12 měsíců)',color:'#E67E22',
+     desc:'AI analýza fotek/popisů + sestavení rozpočtu. Technicky náročnější.',
+     items:[
+       {p:'POV',r:'1–25k',method:'Rozpočet',count:2437,note:'Velký objem, ale potřeba foto-AI'},
+       {p:'Majetek',r:'1–25k',method:'Rozpočet',count:2446,note:'Majetkové škody z fotek'},
+       {p:'Havarijní',r:'1–25k',method:'Rozpočet',count:557,note:'Rozšíření na auto-rozpočty'},
+       {p:'POV',r:'25–50k',method:'Rozpočet',count:1530,note:'Vyšší částky, stejná technologie'},
+     ]},
+    {num:4,name:'Fáze 4 — Vyšší rangy + rozšíření (12+ měsíců)',color:'#C0392B',
+     desc:'Faktury a rozpočty ve vyšších ranzích. Vyšší riziko = přísnější validace.',
+     items:[
+       {p:'POV',r:'50k–100k',method:'Faktura+Rozpočet',count:1887,note:'Vyšší částky, potřeba lidské kontroly'},
+       {p:'Havarijní',r:'50k–100k',method:'Faktura+Rozpočet',count:1376,note:'Složitější opravy'},
+       {p:'POV',r:'100k–1M',method:'S kontrolou',count:1998,note:'Vždy s finálním schválením likvidátora'},
+     ]}
+  ];
+
+  let cumH=0,cumCases=0;
+  let html=phases.map(ph=>{
+    const phCases=ph.items.reduce((s,it)=>s+it.count,0);
+    const phHours=hrs(phCases);
+    cumH+=phHours;cumCases+=phCases;
+
+    let items=ph.items.map(it=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${ph.color}08;border-radius:6px;margin-bottom:4px;border:1px solid ${ph.color}15">
+        <div><span style="font-weight:700">${it.p}</span> × <span style="font-weight:600">${it.r}</span> <span style="color:${it.method.includes('Faktura')?'var(--bg)':'var(--or)'};font-weight:700;margin-left:4px">${it.method}</span>
+        <div style="font-size:11px;color:var(--gy)">${it.note}</div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-size:16px;font-weight:800;color:${ph.color}">${fmt(it.count)}</div><div style="font-size:10px;color:var(--gy)">${fmt(hrs(it.count))} h</div></div>
+      </div>
+    `).join('');
+
+    return`<div class="c" style="border-left:5px solid ${ph.color}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div><div style="font-size:16px;font-weight:800;color:${ph.color}">${ph.name}</div><div style="font-size:12px;color:var(--gy)">${ph.desc}</div></div>
+        <div style="text-align:right"><div style="font-size:22px;font-weight:800;color:var(--dk)">${fmt(phHours)} h/rok</div><div style="font-size:11px;color:var(--gy)">${fmt(phCases)} případů · ${(phHours/1700).toFixed(1)} FTE</div></div>
+      </div>
+      ${items}
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);font-size:12px;color:var(--gy)">
+        Kumulativně po této fázi: <strong style="color:var(--dk)">${fmt(cumH)} h/rok</strong> · ${fmt(cumCases)} případů · ${(cumH/1700).toFixed(1)} FTE
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('t-roadmap').innerHTML=html+`
+    <div class="c"><div class="c-t">Shrnutí roadmapy</div>
+    <div class="note top" style="font-size:13px;line-height:1.8">
+      <strong>Fáze 1 (Quick Win)</strong> pokryje ~${fmt(hrs(phases[0].items.reduce((s,i)=>s+i.count,0)))} h/rok jen s fakturami do 25k — <strong>jedna AI technologie</strong> (OCR + pravidlový engine), nasaditelná za 1–3 měsíce.<br><br>
+      <strong>Fáze 1+2 dohromady</strong> = jen faktury, ale pokryjí drtivou většinu snadně automatizovatelných případů.<br><br>
+      <strong>Fáze 3</strong> je technologický skok — rozpočty vyžadují <strong>computer vision + AI odhad nákladů</strong>. Vyšší investice, ale velký objem (zejména POV a Majetek).<br><br>
+      <strong>Celkem přes všechny fáze: ~${fmt(cumH)} h/rok = ${(cumH/1700).toFixed(0)} FTE</strong>
+    </div></div>`;
+}
+
+rTabs();rKPI();render();
+</script>
+</body>
+</html>
